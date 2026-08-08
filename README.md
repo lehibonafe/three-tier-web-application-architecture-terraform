@@ -6,8 +6,8 @@ This project delivers an automated, highly available, and secure three-tier web 
 
 ## Prerequisites:
 You must have these installed on your local machine
-1. [**AWS CLI** 🔗](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
-2. [**Terraform** 🔗](https://developer.hashicorp.com/terraform/install)
+1. [**AWS CLI**](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)🔗
+2. [**Terraform**](https://developer.hashicorp.com/terraform/install)🔗
 
 ## Create the IAM User
 1. Log in to the **AWS Management Console** as an administrator.
