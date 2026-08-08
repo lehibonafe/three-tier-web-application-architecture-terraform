@@ -4,11 +4,10 @@ This project delivers an automated, highly available, and secure three-tier web 
 
 ![alt text](three-tier-web-app-architecture.webp)
 
-## Prerequisites
-1. [**AWS CLI**](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
-2. [**Terraform**](https://developer.hashicorp.com/terraform/install)
-
-To grant Terraform programmatic access to manage your AWS infrastructure, you must create a dedicated IAM User using the AWS Management Console and configure its access keys. Follow this step-by-step walkthrough to set it up.
+## Prerequisites:
+You must have these installed on your local machine
+1. [**AWS CLI** 🔗](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html)
+2. [**Terraform** 🔗](https://developer.hashicorp.com/terraform/install)
 
 ## Create the IAM User
 1. Log in to the **AWS Management Console** as an administrator.
