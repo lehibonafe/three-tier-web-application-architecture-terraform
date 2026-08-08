@@ -11,5 +11,14 @@ This project delivers an automated, highly available, and secure three-tier web 
 4. Enter a name: e.g.: `solution-architect` and click **Next**
     - Leave the checkbox for "Provide user access to the AWS Management Console" unchecked since Terraform only requires programmatic CLI access
 5. On the **Set permissions** page, select **Attach policies directly**.
-6. Search for and check **AdministratorAccess**
+6. Search for and check **AdministratorAccess**.
 7. Click **Next** at the bottom of the page.
+
+## Generate Access Keys
+1. Click your new created user `solution-architect`
+2. Select the **Security credentials** tab.
+3. Scroll down **Create access key**.
+4. Select **Command Line Interface (CLI)**.
+5. check the confirmation box indicating you understand the recommendations, and click **Next**.
+6. Add a description tag, such as `Terraform Deployment Key`, and click **Create access key**
+7. Click **Download .csv file** to save these keys to your local machine.
