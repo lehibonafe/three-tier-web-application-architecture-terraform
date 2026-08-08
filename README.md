@@ -6,10 +6,10 @@ This project delivers an automated, highly available, and secure three-tier web 
 
 ## Create the IAM User
 1. Log in to the **AWS Management Console** as an administrator.
-2. Go to IAM (Identify and Access Management) and select IAM Users.
-3. Click Create User
-4. Enter a name: e.g.: <mark>solution-architect</mark> and click next
+2. Go to **IAM** (Identify and Access Management) and select **IAM Users**.
+3. Click **Create User**
+4. Enter a name: e.g.: `solution-architect` and click **Next**
     - Leave the checkbox for "Provide user access to the AWS Management Console" unchecked since Terraform only requires programmatic CLI access
-5. On the Set permissions page, select **Attach policies directly**.
-6. In the Permissions policies search box, search for and check **AdministratorAccess** (or your custom restricted infrastructure policy).
+5. On the **Set permissions** page, select **Attach policies directly**.
+6. Search for and check **AdministratorAccess**
 7. Click **Next** at the bottom of the page.
