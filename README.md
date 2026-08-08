@@ -1,1 +1,3 @@
 # Three Tier Web Application Architecture Using Terraform
+
+This project delivers an automated, highly available, and secure three-tier web application architecture on AWS using Terraform to ensure consistent, repeatable, and scalable infrastructure deployments. The architecture isolates workloads into specialized logical layers across multiple Availability Zones (AZs) to achieve maximum fault tolerance and minimize the blast radius of potential security incidents.
