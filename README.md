@@ -50,10 +50,19 @@ export AWS_DEFAULT_REGION="ap-southeast-1
 ```
 Once configured, verify your setup by running terraform plan in your project folder to ensure Terraform connects to AWS successfully
 
-## Terraform 
+## Terraform
+
+The infrastructure is organized into networking, security, presentation, application, and data layers. This separation makes deployments repeatable and isolates each tier according to its role.
 
 ### main.tf
-```
+
+The `main.tf` file creates the AWS resources used by the architecture.
+
+#### 1. Networking Layer
+
+The network uses a `/16` VPC across two Availability Zones. Public subnets host the Application Load Balancer and NAT Gateway, private application subnets host EC2 instances, and isolated database subnets host RDS.
+
+```hcl
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
@@ -61,7 +70,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
 
   tags = {
-    Name = "Three-Tier-VPC"
+    Name = "three-tier-vpc"
   }
 }
 
@@ -70,9 +79,185 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "Three-Tier-NAT"
+    Name = "three-tier-igw"
+  }
+}
+```
+
+The VPC contains the following subnets:
+
+| Tier | Availability Zone | CIDR block | Access |
+| --- | --- | --- | --- |
+| Public | `ap-southeast-1a` | `10.0.1.0/24` | Internet Gateway |
+| Public | `ap-southeast-1b` | `10.0.2.0/24` | Internet Gateway |
+| Application | `ap-southeast-1a` | `10.0.11.0/24` | Outbound through NAT Gateway |
+| Application | `ap-southeast-1b` | `10.0.12.0/24` | Outbound through NAT Gateway |
+| Database | `ap-southeast-1a` | `10.0.21.0/24` | VPC-local traffic only |
+| Database | `ap-southeast-1b` | `10.0.22.0/24` | VPC-local traffic only |
+
+The public route table sends internet traffic through the Internet Gateway. The private application route table uses the NAT Gateway so EC2 instances can download updates without receiving public IP addresses.
+
+#### 2. Security Layer
+
+Security groups enforce traffic flow between the tiers:
+
+- The ALB accepts public HTTP traffic on port `80`.
+- Application instances accept HTTP traffic only from the ALB security group.
+- The database accepts MySQL traffic on port `3306` only from the application security group.
+
+```hcl
+# Application tier: allow HTTP from the ALB only
+ingress {
+  from_port       = 80
+  to_port         = 80
+  protocol        = "tcp"
+  security_groups = [aws_security_group.alb.id]
+}
+
+# Database tier: allow MySQL from the application tier only
+ingress {
+  from_port       = 3306
+  to_port         = 3306
+  protocol        = "tcp"
+  security_groups = [aws_security_group.app.id]
+}
+```
+
+#### 3. Presentation Tier
+
+An internet-facing Application Load Balancer spans both public subnets. Its listener forwards HTTP requests to the application target group and uses health checks to route traffic only to healthy instances.
+
+```hcl
+resource "aws_lb" "external" {
+  name               = "three-tier-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+}
+```
+
+#### 4. Application Tier
+
+The application runs on Ubuntu 24.04 LTS EC2 instances in private subnets. A launch template installs Apache, while an Auto Scaling group maintains two instances and can scale up to four.
+
+```hcl
+resource "aws_autoscaling_group" "app" {
+  name                = "three-tier-asg"
+  vpc_zone_identifier = [aws_subnet.private_app_1.id, aws_subnet.private_app_2.id]
+  target_group_arns   = [aws_lb_target_group.app.arn]
+
+  desired_capacity = 2
+  min_size         = 2
+  max_size         = 4
+
+  launch_template {
+    id      = aws_launch_template.app.id
+    version = "$Latest"
+  }
+}
+```
+
+#### 5. Data Tier
+
+Amazon RDS for MySQL runs in the private database subnets. Its security group prevents direct public access and permits database connections only from the application tier.
+
+```hcl
+resource "aws_db_instance" "mysql" {
+  allocated_storage      = 20
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  db_name                = "applicationdb"
+  db_subnet_group_name   = aws_db_subnet_group.db.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+  skip_final_snapshot    = true
+  multi_az               = false
+}
+```
+
+### providers.tf
+
+The provider configuration sets the minimum Terraform version, pins the AWS provider to a compatible release, and deploys resources to the Singapore Region.
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.58.0"
+    }
   }
 }
 
-
+provider "aws" {
+  region = "ap-southeast-1"
+}
 ```
+
+## Traffic Flow
+
+```text
+Internet
+   |
+   v
+Application Load Balancer (public subnets)
+   |
+   v
+EC2 Auto Scaling Group (private application subnets)
+   |
+   v
+Amazon RDS for MySQL (private database subnets)
+```
+
+## Deploy the Infrastructure
+
+1. Initialize the working directory:
+
+   ```bash
+   terraform init
+   ```
+
+2. Format and validate the configuration:
+
+   ```bash
+   terraform fmt -check
+   terraform validate
+   ```
+
+3. Review the execution plan:
+
+   ```bash
+   terraform plan
+   ```
+
+4. Create the AWS resources:
+
+   ```bash
+   terraform apply
+   ```
+
+5. Enter `yes` when Terraform asks for confirmation. After deployment, open the Application Load Balancer DNS name shown in the AWS console to access the sample web page.
+
+## Clean Up
+
+Destroy the infrastructure when it is no longer needed to avoid ongoing AWS charges:
+
+```bash
+terraform destroy
+```
+
+Review the destruction plan, then enter `yes` to confirm.
+
+## Production Considerations
+
+This repository is a demonstration environment. Before using it for production workloads:
+
+- Move the database credentials out of `main.tf` and store them in AWS Secrets Manager or provide them through sensitive Terraform variables.
+- Enable HTTPS on the ALB with an ACM certificate and redirect HTTP traffic to HTTPS.
+- Enable Multi-AZ deployment, backups, encryption, and deletion protection for RDS.
+- Deploy one NAT Gateway per Availability Zone if application-tier network fault tolerance is required.
+- Use a least-privilege IAM policy instead of granting `AdministratorAccess`.
+- Store Terraform state remotely with encryption and state locking for team environments.
